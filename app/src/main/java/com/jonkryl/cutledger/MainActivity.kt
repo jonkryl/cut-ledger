@@ -55,7 +55,7 @@ class MainActivity : Activity() {
     override fun onCreate(state: Bundle?) {
         super.onCreate(state)
         window.statusBarColor = paperColor
-        window.navigationBarColor = paperColor
+        window.navigationBarColor = blue
         window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
         draft = DraftCodec.decode(prefs.getString("draft", null)) ?: Draft()
         val root = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setBackgroundColor(paperColor) }
