@@ -1,0 +1,22 @@
+<resources>
+  <item type="id" name="title" />
+  <item type="id" name="menu" />
+  <item type="id" name="project_name" />
+  <item type="id" name="stock_input" />
+  <item type="id" name="parts_input" />
+  <item type="id" name="kerf_input" />
+  <item type="id" name="trim_input" />
+  <item type="id" name="calculate" />
+  <item type="id" name="example" />
+  <item type="id" name="save" />
+  <item type="id" name="open" />
+  <item type="id" name="back" />
+  <item type="id" name="help" />
+  <item type="id" name="privacy" />
+  <item type="id" name="summary" />
+  <item type="id" name="result" />
+  <item type="id" name="share" />
+  <item type="id" name="method" />
+  <item type="id" name="error" />
+  <item type="id" name="bar_diagram" />
+</resources>
