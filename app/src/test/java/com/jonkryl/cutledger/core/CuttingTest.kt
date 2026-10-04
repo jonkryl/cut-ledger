@@ -70,7 +70,7 @@ class CuttingTest {
         assertEquals(d, DraftCodec.decode(DraftCodec.encode(d))); assertNull(DraftCodec.decode("broken")); assertNull(DraftCodec.decode("{\"schema\":9}"))
     }
     @Test fun csvRetainsQuantitiesPositionsAndEscapesLabels() {
-        val j = job(listOf(1000), listOf(300, 300), 3).copy(name = "=SUM(1;2)", pieces = listOf(Piece(0, "\"A\"", 300), Piece(1, "=2+2", 300)))
+        val j = job(listOf(1_000_000), listOf(300_000, 300_000), 3_000).copy(name = "=SUM(1;2)", pieces = listOf(Piece(0, "\"A\"", 300_000), Piece(1, "=2+2", 300_000)))
         val csv = PlanCsv.export(CuttingPlanner.solve(j))
         assertTrue(csv.contains("\"'=SUM(1;2)\"")); assertTrue(csv.contains("\"\"\"A\"\"\"")); assertTrue(csv.contains("\"'=2+2\"")); assertTrue(csv.contains(";303;603"))
     }
