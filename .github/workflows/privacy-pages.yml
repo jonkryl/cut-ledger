@@ -2,14 +2,14 @@ name: Privacy and support page
 on:
   push:
     branches: [main]
-    paths: ['.github/workflows/pages.yml']
+    paths: ['.github/workflows/privacy-pages.yml']
   workflow_dispatch:
 permissions:
   contents: read
   pages: write
   id-token: write
 concurrency:
-  group: garden-pages
+  group: cut-ledger-pages
   cancel-in-progress: true
 jobs:
   publish:
