@@ -1,0 +1,206 @@
+name: Verified signed release
+on:
+  workflow_dispatch:
+    inputs:
+      source_ref:
+        description: Exact source commit which passed Android CI
+        required: true
+        default: 'dee21ba9f81f194a5bef2506096bc55f6c937cf5'
+      ci_run_id:
+        description: Successful Android CI run for this exact source
+        required: true
+        default: '37184314416'
+      reuse_signed_run_id:
+        description: Reuse this exact successful signing job's APK/AAB; blank for a new build
+        required: false
+        default: ''
+      version_code:
+        required: true
+        default: '1'
+      version_name:
+        required: true
+        default: '1.0.0'
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: cut-ledger-release
+  cancel-in-progress: false
+jobs:
+  signed:
+    name: Verify prior quality proof and sign APK/AAB
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      SOURCE_SHA: ${{ inputs.source_ref }}
+      CI_RUN_ID: ${{ inputs.ci_run_id }}
+      VERSION_CODE: ${{ inputs.version_code }}
+      VERSION_NAME: ${{ inputs.version_name }}
+      YANDEX_BANNER_ID: R-M-20171771-1
+      KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+      KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+      KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ inputs.source_ref }}
+      - name: Validate inputs and restore public release verification helpers
+        env:
+          HELPER_PAYLOAD: eyJ2ZXJpZnktcmVsZWFzZS5zaCI6ICIjIS91c3IvYmluL2VudiBiYXNoXG5zZXQgLWV1byBwaXBlZmFpbFxubWtkaXIgLXAgcmVsZWFzZS1vdXRwdXRcbmNwIGFwcC9idWlsZC9vdXRwdXRzL2Fway9yZWxlYXNlL2FwcC1yZWxlYXNlLmFwayBcInJlbGVhc2Utb3V0cHV0L2N1dC1sZWRnZXItJHtWRVJTSU9OX05BTUV9LSR7VkVSU0lPTl9DT0RFfS5hcGtcIlxuY3AgYXBwL2J1aWxkL291dHB1dHMvYnVuZGxlL3JlbGVhc2UvYXBwLXJlbGVhc2UuYWFiIFwicmVsZWFzZS1vdXRwdXQvY3V0LWxlZGdlci0ke1ZFUlNJT05fTkFNRX0tJHtWRVJTSU9OX0NPREV9LmFhYlwiXG5hcGs9XCJyZWxlYXNlLW91dHB1dC9jdXQtbGVkZ2VyLSR7VkVSU0lPTl9OQU1FfS0ke1ZFUlNJT05fQ09ERX0uYXBrXCJcbmFhYj1cInJlbGVhc2Utb3V0cHV0L2N1dC1sZWRnZXItJHtWRVJTSU9OX05BTUV9LSR7VkVSU0lPTl9DT0RFfS5hYWJcIlxuYnVpbGRfdG9vbHM9XCIke0FORFJPSURfSE9NRX0vYnVpbGQtdG9vbHMvMzYuMC4wXCJcbmlmIFsgISAteCBcIiRidWlsZF90b29scy9hcGtzaWduZXJcIiBdOyB0aGVuXG4gICAgYnVpbGRfdG9vbHM9XCIkKGZpbmQgXCIke0FORFJPSURfSE9NRX0vYnVpbGQtdG9vbHNcIiAtbWF4ZGVwdGggMSAtbWluZGVwdGggMSAtdHlwZSBkIHwgc29ydCAtViB8IHRhaWwgLTEpXCJcbmZpXG5cIiRidWlsZF90b29scy9hcGtzaWduZXJcIiB2ZXJpZnkgLS12ZXJib3NlIC0tcHJpbnQtY2VydHMgXCIkYXBrXCIgPiByZWxlYXNlLW91dHB1dC9hcGstc2lnbmF0dXJlLnR4dFxuXCIkYnVpbGRfdG9vbHMvemlwYWxpZ25cIiAtYyAtUCAxNiAtdiA0IFwiJGFwa1wiID4gcmVsZWFzZS1vdXRwdXQvYXBrLWFsaWdubWVudC50eHRcbmphcnNpZ25lciAtdmVyaWZ5IC12ZXJib3NlIC1jZXJ0cyBcIiRhYWJcIiA+IHJlbGVhc2Utb3V0cHV0L2FhYi1zaWduYXR1cmUudHh0XG5ncmVwIC1xICdqYXIgdmVyaWZpZWQnIHJlbGVhc2Utb3V0cHV0L2FhYi1zaWduYXR1cmUudHh0XG5rZXl0b29sIC1wcmludGNlcnQgLWphcmZpbGUgXCIkYWFiXCIgPiByZWxlYXNlLW91dHB1dC9hYWItY2VydGlmaWNhdGUudHh0XG5jdXJsIC0tZmFpbCAtLXNpbGVudCAtLXNob3ctZXJyb3IgLS1sb2NhdGlvbiBodHRwczovL2dpdGh1Yi5jb20vZ29vZ2xlL2J1bmRsZXRvb2wvcmVsZWFzZXMvZG93bmxvYWQvMS4xOC4zL2J1bmRsZXRvb2wtYWxsLTEuMTguMy5qYXIgLW8gXCIkUlVOTkVSX1RFTVAvYnVuZGxldG9vbC5qYXJcIlxucHJpbnRmICclcyAgJXNcXG4nICdhMDk5Y2ZhMTU0M2Y1NTU5M2JjMmVkMTZhNzBhN2M2N2ZlNTRiMTc0N2JiNzMwMWYzN2ZkZmQ2ZDkxMDI4ZTI5JyBcIiRSVU5ORVJfVEVNUC9idW5kbGV0b29sLmphclwiIHwgc2hhMjU2c3VtIC0tY2hlY2tcbmphdmEgLWphciBcIiRSVU5ORVJfVEVNUC9idW5kbGV0b29sLmphclwiIHZhbGlkYXRlIC0tYnVuZGxlPVwiJGFhYlwiID4gcmVsZWFzZS1vdXRwdXQvYWFiLXZhbGlkYXRpb24udHh0XG5qYXZhIC1qYXIgXCIkUlVOTkVSX1RFTVAvYnVuZGxldG9vbC5qYXJcIiBkdW1wIG1hbmlmZXN0IC0tYnVuZGxlPVwiJGFhYlwiIC0tbW9kdWxlPWJhc2UgPiByZWxlYXNlLW91dHB1dC9hYWItbWFuaWZlc3QueG1sXG5ncmVwIC1xICdwYWNrYWdlPVwiY29tLmpvbmtyeWwuY3V0bGVkZ2VyXCInIHJlbGVhc2Utb3V0cHV0L2FhYi1tYW5pZmVzdC54bWxcbmdyZXAgLXEgXCJ2ZXJzaW9uQ29kZT1cXFwiJHtWRVJTSU9OX0NPREV9XFxcIlwiIHJlbGVhc2Utb3V0cHV0L2FhYi1tYW5pZmVzdC54bWxcblwiJGJ1aWxkX3Rvb2xzL2FhcHRcIiBkdW1wIGJhZGdpbmcgXCIkYXBrXCIgPiByZWxlYXNlLW91dHB1dC9wYWNrYWdlLnR4dFxuZ3JlcCAtcSBcInBhY2thZ2U6IG5hbWU9J2NvbS5qb25rcnlsLmN1dGxlZGdlcicgdmVyc2lvbkNvZGU9JyR7VkVSU0lPTl9DT0RFfSdcIiByZWxlYXNlLW91dHB1dC9wYWNrYWdlLnR4dFxuZ3JlcCAtcSBcInNka1ZlcnNpb246JzI0J1wiIHJlbGVhc2Utb3V0cHV0L3BhY2thZ2UudHh0XG5ncmVwIC1xIFwidGFyZ2V0U2RrVmVyc2lvbjonMzYnXCIgcmVsZWFzZS1vdXRwdXQvcGFja2FnZS50eHRcblwiJGJ1aWxkX3Rvb2xzL2FhcHRcIiBkdW1wIHhtbHRyZWUgXCIkYXBrXCIgQW5kcm9pZE1hbmlmZXN0LnhtbCA+IHJlbGVhc2Utb3V0cHV0L21lcmdlZC1tYW5pZmVzdC50eHRcbmlmIGdyZXAgLXEgJ2NvbS5nb29nbGUuYW5kcm9pZC5nbXMucGVybWlzc2lvbi5BRF9JRCcgcmVsZWFzZS1vdXRwdXQvbWVyZ2VkLW1hbmlmZXN0LnR4dDsgdGhlblxuICAgIGVjaG8gJ1RoZSByZWxlYXNlIHVuZXhwZWN0ZWRseSByZXF1ZXN0cyBhZHZlcnRpc2luZyBJRCBhY2Nlc3MnID4mMlxuICAgIGV4aXQgMVxuZmlcbmtleXRvb2wgLWxpc3QgLXYgLWtleXN0b3JlIFwiJEtFWVNUT1JFX0ZJTEVcIiAtYWxpYXMgXCIkS0VZX0FMSUFTXCIgLXN0b3JlcGFzczplbnYgS0VZU1RPUkVfUEFTU1dPUkQgPiBcIiRSVU5ORVJfVEVNUC9leHBlY3RlZC1jZXJ0aWZpY2F0ZS50eHRcIlxucHl0aG9uMyByZWxlYXNlLXRvb2xzL3ZlcmlmeS1jZXJ0aWZpY2F0ZS5weSByZWxlYXNlLW91dHB1dC9hcGstc2lnbmF0dXJlLnR4dCBcIiRSVU5ORVJfVEVNUC9leHBlY3RlZC1jZXJ0aWZpY2F0ZS50eHRcIlxucHl0aG9uMyByZWxlYXNlLXRvb2xzL3ZlcmlmeS1jZXJ0aWZpY2F0ZS5weSByZWxlYXNlLW91dHB1dC9hYWItY2VydGlmaWNhdGUudHh0IFwiJFJVTk5FUl9URU1QL2V4cGVjdGVkLWNlcnRpZmljYXRlLnR4dFwiXG5weXRob24zIHNjcmlwdHMvdmVyaWZ5LWVsZi1hbGlnbm1lbnQucHkgXCIkYXBrXCIgPiByZWxlYXNlLW91dHB1dC9uYXRpdmUtcGFnZS1hbGlnbm1lbnQudHh0XG5weXRob24zIHNjcmlwdHMvdmVyaWZ5LWVsZi1hbGlnbm1lbnQucHkgXCIkYWFiXCIgPiByZWxlYXNlLW91dHB1dC9idW5kbGUtbmF0aXZlLXBhZ2UtYWxpZ25tZW50LnR4dFxucHl0aG9uMyByZWxlYXNlLXRvb2xzL3JlbGVhc2UtbWV0YWRhdGEucHkgXCIkYXBrXCIgXCIkYWFiXCJcbnNoYTI1NnN1bSBcIiRhcGtcIiBcIiRhYWJcIiA+IHJlbGVhc2Utb3V0cHV0L1NIQTI1NlNVTVNcbnByaW50ZiAnY29tbWl0PSVzXFxucnVuPSVzLyVzL2FjdGlvbnMvcnVucy8lc1xcbnZlcnNpb25fY29kZT0lc1xcbnZlcnNpb25fbmFtZT0lc1xcbicgXCIkU09VUkNFX1NIQVwiIFwiJEdJVEhVQl9TRVJWRVJfVVJMXCIgXCIkR0lUSFVCX1JFUE9TSVRPUllcIiBcIiRHSVRIVUJfUlVOX0lEXCIgXCIkVkVSU0lPTl9DT0RFXCIgXCIkVkVSU0lPTl9OQU1FXCIgPiByZWxlYXNlLW91dHB1dC9idWlsZC1wcm92ZW5hbmNlLnR4dFxuIiwgInJlbGVhc2UtbWV0YWRhdGEucHkiOiAiXCJcIlwiUmVjb3JkIHB1YmxpYyBwcm92ZW5hbmNlIGFuZCB2ZXJpZnkgdGhhdCB0aGUgc2lnbmVkIGJpbmFyeSBjb250YWlucyB0aGlzIGFwcCdzIHJlYWwgYmFubmVyLlwiXCJcIlxuaW1wb3J0IGhhc2hsaWJcbmltcG9ydCBqc29uXG5pbXBvcnQgb3NcbmltcG9ydCByZVxuaW1wb3J0IHN5c1xuaW1wb3J0IHppcGZpbGVcbmZyb20gcGF0aGxpYiBpbXBvcnQgUGF0aFxuXG5hcGssIGFhYiA9IG1hcChQYXRoLCBzeXMuYXJndlsxOl0pXG5iYW5uZXIgPSBvcy5lbnZpcm9uW1wiWUFOREVYX0JBTk5FUl9JRFwiXVxuaWYgbm90IHJlLmZ1bGxtYXRjaChyXCJSLU0tXFxkKy1cXGQrXCIsIGJhbm5lcik6XG4gICAgcmFpc2UgU3lzdGVtRXhpdChcIkEgcmVhbCBiYW5uZXIgaXMgcmVxdWlyZWRcIilcbndpdGggemlwZmlsZS5aaXBGaWxlKGFwaykgYXMgYXJjaGl2ZTpcbiAgICBkZXggPSBiXCJcIi5qb2luKGFyY2hpdmUucmVhZChuYW1lKSBmb3IgbmFtZSBpbiBhcmNoaXZlLm5hbWVsaXN0KCkgaWYgcmUuZnVsbG1hdGNoKHJcImNsYXNzZXNcXGQqXFwuZGV4XCIsIG5hbWUpKVxuICAgIGlmIGJhbm5lci5lbmNvZGUoKSArIGJcIlxcMFwiIG5vdCBpbiBkZXg6XG4gICAgICAgIHJhaXNlIFN5c3RlbUV4aXQoXCJUaGUgY29uZmlndXJlZCByZWFsIGJhbm5lciBpcyBhYnNlbnQgZnJvbSB0aGUgc2lnbmVkIEFQS1wiKVxuICAgIGlmIGJcImRlbW8tYmFubmVyLXlhbmRleFwiIGluIGRleDpcbiAgICAgICAgcmFpc2UgU3lzdGVtRXhpdChcIlRoZSBzaWduZWQgQVBLIGNvbnRhaW5zIHRoZSBkZWJ1ZyBkZW1vIGJhbm5lciBJRFwiKVxuc2lnbmF0dXJlID0gUGF0aChcInJlbGVhc2Utb3V0cHV0L2Fway1zaWduYXR1cmUudHh0XCIpLnJlYWRfdGV4dCgpXG5jZXJ0aWZpY2F0ZSA9IHJlLnNlYXJjaChyXCJjZXJ0aWZpY2F0ZSBTSEEtMjU2IGRpZ2VzdDogKFswLTlhLWZdKylcIiwgc2lnbmF0dXJlKVxuaWYgbm90IGNlcnRpZmljYXRlOlxuICAgIHJhaXNlIFN5c3RlbUV4aXQoXCJUaGUgQVBLIGNlcnRpZmljYXRlIHdhcyBub3QgdmVyaWZpZWRcIilcbm5hdGl2ZV9uYW1lcyA9IFtdXG53aXRoIHppcGZpbGUuWmlwRmlsZShhcGspIGFzIGFyY2hpdmU6XG4gICAgbmF0aXZlX25hbWVzID0gc29ydGVkKG5hbWUgZm9yIG5hbWUgaW4gYXJjaGl2ZS5uYW1lbGlzdCgpIGlmIG5hbWUuZW5kc3dpdGgoXCIuc29cIikpXG5yZXN1bHQgPSB7XG4gICAgXCJyZXBvc2l0b3J5XCI6IG9zLmVudmlyb25bXCJHSVRIVUJfUkVQT1NJVE9SWVwiXSxcbiAgICBcInNvdXJjZVNoYVwiOiBvcy5lbnZpcm9uW1wiU09VUkNFX1NIQVwiXSxcbiAgICBcIndvcmtmbG93U2hhXCI6IG9zLmVudmlyb25bXCJHSVRIVUJfU0hBXCJdLFxuICAgIFwicXVhbGl0eVJ1blwiOiBpbnQob3MuZW52aXJvbltcIkNJX1JVTl9JRFwiXSksXG4gICAgXCJydW5VcmxcIjogZid7b3MuZW52aXJvbltcIkdJVEhVQl9TRVJWRVJfVVJMXCJdfS97b3MuZW52aXJvbltcIkdJVEhVQl9SRVBPU0lUT1JZXCJdfS9hY3Rpb25zL3J1bnMve29zLmVudmlyb25bXCJHSVRIVUJfUlVOX0lEXCJdfScsXG4gICAgXCJwYWNrYWdlXCI6IFwiY29tLmpvbmtyeWwuY3V0bGVkZ2VyXCIsXG4gICAgXCJ2ZXJzaW9uQ29kZVwiOiBpbnQob3MuZW52aXJvbltcIlZFUlNJT05fQ09ERVwiXSksXG4gICAgXCJ2ZXJzaW9uTmFtZVwiOiBvcy5lbnZpcm9uW1wiVkVSU0lPTl9OQU1FXCJdLFxuICAgIFwibWluU2RrXCI6IDI0LFxuICAgIFwidGFyZ2V0U2RrXCI6IDM2LFxuICAgIFwiY29tcGlsZVNka1wiOiAzNixcbiAgICBcInlhbmRleFNka1wiOiBcIjguNS4wXCIsXG4gICAgXCJiYW5uZXJJZFwiOiBiYW5uZXIsXG4gICAgXCJyZWxlYXNlRGVtb0Jhbm5lclByZXNlbnRcIjogRmFsc2UsXG4gICAgXCJjZXJ0aWZpY2F0ZVNoYTI1NlwiOiBjZXJ0aWZpY2F0ZVsxXSxcbiAgICBcImFydGlmYWN0c1wiOiBbe1wiZmlsZW5hbWVcIjogcGF0aC5uYW1lLCBcInNoYTI1NlwiOiBoYXNobGliLnNoYTI1NihwYXRoLnJlYWRfYnl0ZXMoKSkuaGV4ZGlnZXN0KCksIFwiYnl0ZXNcIjogcGF0aC5zdGF0KCkuc3Rfc2l6ZX0gZm9yIHBhdGggaW4gKGFwaywgYWFiKV0sXG4gICAgXCJjaGVja3NcIjoge1wiYXBrU2lnbmF0dXJlXCI6IFRydWUsIFwiYWFiU2lnbmF0dXJlXCI6IFRydWUsIFwiY2VydGlmaWNhdGVNYXRjaGVzVXBsb2FkS2V5XCI6IFRydWUsIFwiYXBrWmlwQWxpZ25tZW50MTZLYlwiOiBUcnVlLCBcImFwa0FuZEFhYk5hdGl2ZUFsaWdubWVudDE2S2JcIjogVHJ1ZSwgXCJidW5kbGV0b29sVmFsaWRhdGlvblwiOiBUcnVlfSxcbiAgICBcIm5hdGl2ZUxpYnJhcmllc1wiOiBuYXRpdmVfbmFtZXMsXG4gICAgXCJnb29nbGVQbGF5QXZhaWxhYmlsaXR5XCI6IFwibm90IGNvbmZpcm1lZCBieSB0aGlzIHdvcmtmbG93XCIsXG59XG5QYXRoKFwicmVsZWFzZS1vdXRwdXQvcmVsZWFzZS12ZXJpZmljYXRpb24uanNvblwiKS53cml0ZV90ZXh0KGpzb24uZHVtcHMocmVzdWx0LCBpbmRlbnQ9MikgKyBcIlxcblwiKVxucHJpbnQoXCJSZWNvcmRlZCBleGFjdCBzaWduZWQgYXJ0aWZhY3QgaGFzaGVzLCBjZXJ0aWZpY2F0ZSwgc291cmNlLCB2ZXJzaW9uIGFuZCByZWFsIGJhbm5lci5cIilcbiIsICJxdWFsaXR5LWdhdGUucHkiOiAiaW1wb3J0IGpzb24sb3MscmVcbmZyb20gcGF0aGxpYiBpbXBvcnQgUGF0aFxucnVuPWpzb24ubG9hZHMoUGF0aCgncXVhbGl0eS1ydW4uanNvbicpLnJlYWRfdGV4dCgpKTtqb2JzPWpzb24ubG9hZHMoUGF0aCgncXVhbGl0eS1qb2JzLmpzb24nKS5yZWFkX3RleHQoKSlbJ2pvYnMnXVxuYXNzZXJ0IHJ1blsnbmFtZSddPT0nQW5kcm9pZCBDSScgYW5kIHJ1blsnY29uY2x1c2lvbiddPT0nc3VjY2VzcycgYW5kIHJ1blsnc3RhdHVzJ109PSdjb21wbGV0ZWQnXG5hc3NlcnQgcnVuWydyZXBvc2l0b3J5J11bJ2Z1bGxfbmFtZSddPT1vcy5lbnZpcm9uWydHSVRIVUJfUkVQT1NJVE9SWSddXG5leHBlY3RlZD17J0NvbXBpbGUsIGluZGVwZW5kZW50IGN1dHRpbmcgcmVncmVzc2lvbiB0ZXN0cyBhbmQgbGludCcsJ0FuZHJvaWQgQVBJIDI0IHJlYWwgam91cm5leScsJ0FuZHJvaWQgQVBJIDM2IHJlYWwgam91cm5leSd9XG5hc3NlcnQge2pbJ25hbWUnXSBmb3IgaiBpbiBqb2JzfT09ZXhwZWN0ZWRcbmFzc2VydCBhbGwoalsnc3RhdHVzJ109PSdjb21wbGV0ZWQnIGFuZCBqWydjb25jbHVzaW9uJ109PSdzdWNjZXNzJyBmb3IgaiBpbiBqb2JzKVxucHJvb2Y9UGF0aCgncXVhbGl0eS1wcm9vZi9jaS1hcnRpZmFjdHMvcHJvdmVuYW5jZS50eHQnKS5yZWFkX3RleHQoKS5zcGxpdGxpbmVzKClcbmFzc2VydCAnc291cmNlPScrb3MuZW52aXJvblsnU09VUkNFX1NIQSddIGluIHByb29mXG5hc3NlcnQgJ3J1bj0nK29zLmVudmlyb25bJ0NJX1JVTl9JRCddIGluIHByb29mXG5wcmludCgnU3VjY2Vzc2Z1bCB1bml0L2xpbnQvQVBJMjQvQVBJMzYgcnVuIHZlcmlmaWVkIGFnYWluc3QgdGhlIGV4YWN0IHNvdXJjZSBjb21taXQuJylcbiIsICJ2ZXJpZnktY2VydGlmaWNhdGUucHkiOiAiXCJcIlwiQ2hlY2sgdGhlIEFQSyB1c2VzIHRoZSBleGFjdCBwZXJzaXN0ZW50IHVwZGF0ZSBrZXkgc3VwcGxpZWQgYnkgR2l0SHViIHNlY3JldHMuXCJcIlwiXG5pbXBvcnQgcmVcbmltcG9ydCBzeXNcbmZyb20gcGF0aGxpYiBpbXBvcnQgUGF0aFxuXG5hY3R1YWxfdGV4dCA9IFBhdGgoc3lzLmFyZ3ZbMV0pLnJlYWRfdGV4dCgpXG5hY3R1YWwgPSByZS5zZWFyY2goclwiY2VydGlmaWNhdGUgU0hBLTI1NiBkaWdlc3Q6IChbMC05YS1mXSspXCIsIGFjdHVhbF90ZXh0KSBvciByZS5zZWFyY2goclwiU0hBMjU2OiAoWzAtOUEtRjpdKylcIiwgYWN0dWFsX3RleHQpXG5leHBlY3RlZCA9IHJlLnNlYXJjaChyXCJTSEEyNTY6IChbMC05QS1GOl0rKVwiLCBQYXRoKHN5cy5hcmd2WzJdKS5yZWFkX3RleHQoKSlcbmlmIG5vdCBhY3R1YWwgb3Igbm90IGV4cGVjdGVkIG9yIGFjdHVhbFsxXS5yZXBsYWNlKFwiOlwiLCBcIlwiKS5sb3dlcigpICE9IGV4cGVjdGVkWzFdLnJlcGxhY2UoXCI6XCIsIFwiXCIpLmxvd2VyKCk6XG4gICAgcmFpc2UgU3lzdGVtRXhpdChcIlNpZ25lZCBBUEsgZG9lcyBub3QgbWF0Y2ggdGhlIHBlcnNpc3RlbnQgdXBsb2FkIGtleVwiKVxuIn0=
+        run: |
+          set -euo pipefail
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$CI_RUN_ID" =~ ^[0-9]+$ ]]
+          [[ "$VERSION_CODE" =~ ^[1-9][0-9]*$ ]]
+          [[ "$VERSION_NAME" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+          python3 - <<'HELPERS'
+          import os,json,base64
+          from pathlib import Path
+          folder=Path('release-tools');folder.mkdir()
+          for name,content in json.loads(base64.b64decode(os.environ['HELPER_PAYLOAD'])).items():
+              assert name in {'verify-release.sh','release-metadata.py','quality-gate.py','verify-certificate.py'}
+              (folder/name).write_text(content)
+          HELPERS
+      - name: Reuse successful quality checks for this exact source
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$CI_RUN_ID" > quality-run.json
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$CI_RUN_ID/jobs?per_page=100" > quality-jobs.json
+          gh run download "$CI_RUN_ID" --repo "$GITHUB_REPOSITORY" --name unit-lint-proof --dir quality-proof
+          python3 release-tools/quality-gate.py
+      - name: Reuse exact signed artifacts when only device checks need repair
+        if: ${{ inputs.reuse_signed_run_id != '' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REUSE_SIGNED_RUN: ${{ inputs.reuse_signed_run_id }}
+        run: |
+          set -euo pipefail
+          [[ "$REUSE_SIGNED_RUN" =~ ^[0-9]+$ ]]
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$REUSE_SIGNED_RUN/jobs?per_page=100" > reused-jobs.json
+          gh run download "$REUSE_SIGNED_RUN" --repo "$GITHUB_REPOSITORY" --name signed-release --dir reused
+          python3 - <<'REUSE'
+          import json,os,hashlib,shutil
+          from pathlib import Path
+          jobs=json.loads(Path('reused-jobs.json').read_text())['jobs']
+          assert any(j['name']=='Verify prior quality proof and sign APK/AAB' and j['conclusion']=='success' for j in jobs)
+          folder=Path('reused/release-output');r=json.loads((folder/'release-verification.json').read_text())
+          assert r['package']=='com.jonkryl.cutledger' and r['sourceSha']==os.environ['SOURCE_SHA']
+          assert r['versionCode']==int(os.environ['VERSION_CODE']) and r['versionName']==os.environ['VERSION_NAME']
+          assert r['bannerId']==os.environ['YANDEX_BANNER_ID']
+          assert r['certificateSha256']=='5f10d6584f0ee762cffd0f500a0dde0111932a4dd42c20ae9d1365a21e8c1be9'
+          for artifact in r['artifacts']:
+              file=folder/artifact['filename'];assert file.parent==folder
+              assert hashlib.sha256(file.read_bytes()).hexdigest()==artifact['sha256']
+          shutil.copytree(folder,'release-output')
+          Path('release-output/reuse-receipt.json').write_text(json.dumps({'reusedSignedRun':int(os.environ['REUSE_SIGNED_RUN']),'sameSourceSha':os.environ['SOURCE_SHA'],'sameVerifiedBinaryHashes':True}))
+          REUSE
+      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@48b5f213c81028ace310571dc5ec0fbbca0b2947
+        if: ${{ inputs.reuse_signed_run_id == '' }}
+      - uses: android-actions/setup-android@be39fa834029ff78f1a44aa3bb0819b8fc2bd8fd
+        with:
+          packages: 'platform-tools platforms;android-36 build-tools;36.0.0'
+          log-accepted-android-sdk-licenses: 'false'
+      - name: Load protected own upload key
+        if: ${{ inputs.reuse_signed_run_id == '' }}
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+        run: |
+          set -euo pipefail
+          test -n "$KEYSTORE_BASE64" && test -n "$KEYSTORE_PASSWORD" && test -n "$KEY_PASSWORD" && test -n "$KEY_ALIAS"
+          printf 'KEYSTORE_FILE=%s/cut-ledger-upload.p12\n' "$RUNNER_TEMP" >> "$GITHUB_ENV"
+          umask 077
+          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/cut-ledger-upload.p12"
+      - name: Build minified signed release and Play bundle
+        if: ${{ inputs.reuse_signed_run_id == '' }}
+        run: ./gradlew --no-daemon :app:lintRelease :app:assembleRelease :app:bundleRelease -PversionCode="$VERSION_CODE" -PversionName="$VERSION_NAME"
+      - name: Verify signatures, real banner, manifest, bundle and 16 KB alignment
+        if: ${{ inputs.reuse_signed_run_id == '' }}
+        run: |
+          bash release-tools/verify-release.sh
+          cp quality-run.json quality-jobs.json release-output/
+          cp quality-proof/ci-artifacts/provenance.txt release-output/quality-source.txt
+      - name: Independently reverify reused APK signature
+        if: ${{ inputs.reuse_signed_run_id != '' }}
+        run: |
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --print-certs release-output/*.apk > reused-certificate.txt
+          grep -q 'certificate SHA-256 digest: 5f10d6584f0ee762cffd0f500a0dde0111932a4dd42c20ae9d1365a21e8c1be9' reused-certificate.txt
+          cp reused-certificate.txt release-output/
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: signed-release
+          path: |
+            release-output/
+            app/build/outputs/mapping/release/mapping.txt
+            app/build/reports/lint-results-release.*
+          if-no-files-found: error
+          retention-days: 7
+      - name: Remove ephemeral key
+        if: always()
+        run: rm -f "$RUNNER_TEMP/cut-ledger-upload.p12"
+  release-device:
+    name: Actual signed release API ${{ matrix.api }} (${{ matrix.target }})
+    needs: signed
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      SOURCE_SHA: ${{ inputs.source_ref }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - api: 24
+            target: google_apis
+          - api: 36
+            target: google_apis_ps16k
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: signed-release
+          path: release-files
+      - name: Restore original public release smoke and screenshot script
+        env:
+          SMOKE_BASE64: IiIiRXhlcmNpc2UgdGhlIGluc3RhbGxlZCBtaW5pZmllZCByZWxlYXNlIHRocm91Z2ggaXRzIHJlYWwgQW5kcm9pZCBVSS4iIiIKZnJvbSBwYXRobGliIGltcG9ydCBQYXRoCmltcG9ydCBqc29uLCBvcywgcmUsIHN1YnByb2Nlc3MsIHRpbWUsIHhtbC5ldHJlZS5FbGVtZW50VHJlZSBhcyBFCgphcHAgPSAnY29tLmpvbmtyeWwuY3V0bGVkZ2VyJwpvdXQgPSBQYXRoKCdyZWxlYXNlLWRldmljZScpOyBvdXQubWtkaXIoZXhpc3Rfb2s9VHJ1ZSkKZGVmIGFkKCphcmdzLCBjaGVjaz1UcnVlKToKICAgIHAgPSBzdWJwcm9jZXNzLnJ1bihbJ2FkYicsICphcmdzXSwgY2FwdHVyZV9vdXRwdXQ9VHJ1ZSwgdGltZW91dD05MCkKICAgIGlmIGNoZWNrIGFuZCBwLnJldHVybmNvZGU6IHJhaXNlIFJ1bnRpbWVFcnJvcigocC5zdGRvdXQrcC5zdGRlcnIpLmRlY29kZShlcnJvcnM9J3JlcGxhY2UnKSkKICAgIHJldHVybiBwLnN0ZG91dApkZWYgdHJlZSgpOgogICAgYWQoJ3NoZWxsJywgJ3VpYXV0b21hdG9yJywgJ2R1bXAnLCAnL3NkY2FyZC9jdXQtcmVsZWFzZS54bWwnKQogICAgcmF3PWFkKCdzaGVsbCcsJ2NhdCcsJy9zZGNhcmQvY3V0LXJlbGVhc2UueG1sJykKICAgIChvdXQvJ2xhdGVzdC11aS54bWwnKS53cml0ZV9ieXRlcyhyYXcpCiAgICByZXR1cm4gRS5mcm9tc3RyaW5nKHJhdykKZGVmIGJvdW5kcyhuKTogcmV0dXJuIGxpc3QobWFwKGludCxyZS5maW5kYWxsKHInXGQrJyxuLmdldCgnYm91bmRzJykpKSkKZGVmIHRhcChuKToKICAgIHgxLHkxLHgyLHkyPWJvdW5kcyhuKTsgYXNzZXJ0IHgyPngxIGFuZCB5Mj55MQogICAgYWQoJ3NoZWxsJywnaW5wdXQnLCd0YXAnLHN0cigoeDEreDIpLy8yKSxzdHIoKHkxK3kyKS8vMikpCmRlZiBmaW5kKHByZWQsIGRpcmVjdGlvbj0nZG93bicsIGNsaWNrPUZhbHNlKToKICAgIGZvciBfIGluIHJhbmdlKDEyKToKICAgICAgICB0PXRyZWUoKTsgbm9kZXM9W24gZm9yIG4gaW4gdC5pdGVyKCdub2RlJykgaWYgcHJlZChuKV0KICAgICAgICBpZiBub2RlczoKICAgICAgICAgICAgaWYgY2xpY2s6IHRhcChub2Rlc1swXSkKICAgICAgICAgICAgcmV0dXJuIG5vZGVzWzBdCiAgICAgICAgc2Nyb2xscz1bbiBmb3IgbiBpbiB0Lml0ZXIoJ25vZGUnKSBpZiBuLmdldCgnY2xhc3MnKT09J2FuZHJvaWQud2lkZ2V0LlNjcm9sbFZpZXcnIGFuZCBuLmdldCgnc2Nyb2xsYWJsZScpPT0ndHJ1ZSddCiAgICAgICAgaWYgbm90IHNjcm9sbHM6IGJyZWFrCiAgICAgICAgeDEseTEseDIseTI9Ym91bmRzKHNjcm9sbHNbMF0pOyB4PSh4MSt4MikvLzIKICAgICAgICBzdGFydD15MSsoeTIteTEpKjMvLzQ7IGVuZD15MSsoeTIteTEpLy80CiAgICAgICAgaWYgZGlyZWN0aW9uPT0ndXAnOiBzdGFydCxlbmQ9ZW5kLHN0YXJ0CiAgICAgICAgYWQoJ3NoZWxsJywnaW5wdXQnLCdzd2lwZScsc3RyKHgpLHN0cihzdGFydCksc3RyKHgpLHN0cihlbmQpLCczMDAnKQogICAgcmFpc2UgQXNzZXJ0aW9uRXJyb3IoJ0NvbnRyb2wgYWJzZW50IGZyb20gYWN0dWFsIGluc3RhbGxlZCByZWxlYXNlIFVJJykKZGVmIGNvbnRyb2wobmFtZSwgY2xpY2s9VHJ1ZSwgZGlyZWN0aW9uPSdkb3duJyk6CiAgICByZXR1cm4gZmluZChsYW1iZGEgbjpuLmdldCgncmVzb3VyY2UtaWQnKT09YXBwKyc6aWQvJytuYW1lLGRpcmVjdGlvbixjbGljaykKZGVmIGxhdW5jaCgpOiBhZCgnc2hlbGwnLCdhbScsJ3N0YXJ0JywnLVcnLCctbicsYXBwKycvLk1haW5BY3Rpdml0eScpCmRlZiB3YWl0X3N1bW1hcnkoZXhwZWN0ZWQpOgogICAgZm9yIF8gaW4gcmFuZ2UoMjApOgogICAgICAgIHQ9dHJlZSgpOyBub2Rlcz1bbiBmb3IgbiBpbiB0Lml0ZXIoJ25vZGUnKSBpZiBuLmdldCgncmVzb3VyY2UtaWQnKT09YXBwKyc6aWQvc3VtbWFyeSddCiAgICAgICAgaWYgbm9kZXM6CiAgICAgICAgICAgIGFzc2VydCBub2Rlc1swXS5nZXQoJ3RleHQnKT09ZXhwZWN0ZWQsIG5vZGVzWzBdLmdldCgndGV4dCcpCiAgICAgICAgICAgIHJldHVybgogICAgICAgIHRpbWUuc2xlZXAoLjUpCiAgICByYWlzZSBBc3NlcnRpb25FcnJvcignTm8gYWN0dWFsIGNhbGN1bGF0ZWQgcmVzdWx0JykKZGVmIHNob3QoZm9sZGVyLG5hbWUpOgogICAgZm9sZGVyLm1rZGlyKGV4aXN0X29rPVRydWUpCiAgICB0cmVlKCk7IChmb2xkZXIvKG5hbWUrJy54bWwnKSkud3JpdGVfYnl0ZXMoKG91dC8nbGF0ZXN0LXVpLnhtbCcpLnJlYWRfYnl0ZXMoKSkKICAgIChmb2xkZXIvKG5hbWUrJy5wbmcnKSkud3JpdGVfYnl0ZXMoYWQoJ2V4ZWMtb3V0Jywnc2NyZWVuY2FwJywnLXAnKSkKCnRyeToKICAgIGFwaT1pbnQoYWQoJ3NoZWxsJywnZ2V0cHJvcCcsJ3JvLmJ1aWxkLnZlcnNpb24uc2RrJykuc3RyaXAoKSkKICAgIHJhdz1hZCgnc2hlbGwnLCdnZXRjb25mJywnUEFHRVNJWkUnLGNoZWNrPUZhbHNlKS5zdHJpcCgpCiAgICBpZiByYXcuaXNkaWdpdCgpOiBwYWdlPWludChyYXcpOyBwYWdlX21ldGhvZD0nZ2V0Y29uZicKICAgIGVsc2U6CiAgICAgICAgcGFnZXM9cmUuZmluZGFsbChyJ0tlcm5lbFBhZ2VTaXplOlxzKihcZCspIGtCJyxhZCgnc2hlbGwnLCdjYXQnLCcvcHJvYy9zZWxmL3NtYXBzJykuZGVjb2RlKCkpCiAgICAgICAgYXNzZXJ0IHBhZ2VzIGFuZCBsZW4oc2V0KHBhZ2VzKSk9PTEKICAgICAgICBwYWdlPWludChwYWdlc1swXSkqMTAyNDsgcGFnZV9tZXRob2Q9J2FjdHVhbCBwcm9jIHNtYXBzIEtlcm5lbFBhZ2VTaXplJwogICAgYXNzZXJ0IHBhZ2U9PSgxNjM4NCBpZiBhcGk9PTM2IGVsc2UgNDA5NiksKGFwaSxwYWdlKQogICAgYXBrcz1saXN0KFBhdGgoJ3JlbGVhc2UtZmlsZXMvcmVsZWFzZS1vdXRwdXQnKS5nbG9iKCdjdXQtbGVkZ2VyLSouYXBrJykpOyBhc3NlcnQgbGVuKGFwa3MpPT0xCiAgICBhZCgnc2hlbGwnLCdpbnB1dCcsJ2tleWV2ZW50JywnS0VZQ09ERV9XQUtFVVAnKTsgYWQoJ3NoZWxsJywnaW5wdXQnLCdrZXlldmVudCcsJzgyJykKICAgIGlmIGFwaT09MjQ6CiAgICAgICAgYWQoJ3NoZWxsJywnYW0nLCdmb3JjZS1zdG9wJywnY29tLmdvb2dsZS5hbmRyb2lkLmFwcHMubWVzc2FnaW5nJykKICAgICAgICBhZCgnc2hlbGwnLCdwbScsJ2Rpc2FibGUtdXNlcicsJy0tdXNlcicsJzAnLCdjb20uZ29vZ2xlLmFuZHJvaWQuYXBwcy5tZXNzYWdpbmcnKQogICAgYWQoJ2luc3RhbGwnLCctcicsc3RyKGFwa3NbMF0pKTsgcmVwb3J0cz1bXQogICAgZm9yIGxhbmcgaW4gKFsnZW4tVVMnLCdydSddIGlmIGFwaT09MzYgZWxzZSBbJ2VuLVVTJ10pOgogICAgICAgIHJ1PWxhbmc9PSdydSc7IGZvbGRlcj1vdXQvbGFuZwogICAgICAgIGFkKCdzaGVsbCcsJ3BtJywnY2xlYXInLGFwcCkKICAgICAgICBhZCgnc2hlbGwnLCdzZXR0aW5ncycsJ3B1dCcsJ3N5c3RlbScsJ2ZvbnRfc2NhbGUnLCcxLjAnKQogICAgICAgIGlmIGFwaT49MzM6IGFkKCdzaGVsbCcsJ2NtZCcsJ2xvY2FsZScsJ3NldC1hcHAtbG9jYWxlcycsYXBwLCctLXVzZXInLCcwJywnLS1sb2NhbGVzJyxsYW5nKQogICAgICAgIGxhdW5jaCgpCiAgICAgICAgdGl0bGU9Y29udHJvbCgndGl0bGUnLEZhbHNlLCd1cCcpLmdldCgndGV4dCcpCiAgICAgICAgYXNzZXJ0IHRpdGxlPT0oJ9Cf0LvQsNC9INGA0LDRgdC60YDQvtGPJyBpZiBydSBlbHNlICdDdXQgTGVkZ2VyJyksdGl0bGUKICAgICAgICBjb250cm9sKCdleGFtcGxlJyk7IHNob3QoZm9sZGVyLCcwMS1vcmlnaW5hbC1pbnB1dHMnKQogICAgICAgIG5hbWU9Y29udHJvbCgncHJvamVjdF9uYW1lJyxGYWxzZSwndXAnKS5nZXQoJ3RleHQnKQogICAgICAgIGFzc2VydCBuYW1lPT0oJ9Cf0YDQuNC80LXRgCDigJQg0L/QvtC70LrQsCcgaWYgcnUgZWxzZSAnRXhhbXBsZSDigJQgc2hlbGYnKSxuYW1lCiAgICAgICAgY29udHJvbCgnY2FsY3VsYXRlJykKICAgICAgICB3YWl0X3N1bW1hcnkoJ9Cg0LDQt9C80LXRidC10L3QviA3INC40LcgNyDQtNC10YLQsNC70LXQuSDigKIg0LfQsNCz0L7RgtC+0LLQvtC6OiAyJyBpZiBydSBlbHNlICc3IG9mIDcgcGFydHMgcGxhY2VkIOKAoiAyIHN0b2NrIHBpZWNlcyB1c2VkJykKICAgICAgICBleHBlY3RlZD0n0JTQtdGC0LDQu9C4OiA0NTAwINC80Lwg4oCiINC/0YDQvtC/0LjQu9GLOiAyMSDQvNC8IOKAoiDQvtGB0YLQsNGC0L7QujogMjc5INC80LwnIGlmIHJ1IGVsc2UgJ1BhcnRzOiA0NTAwIG1tIOKAoiBzYXcgbG9zczogMjEgbW0g4oCiIHJlbWFpbmRlcjogMjc5IG1tJwogICAgICAgIGFzc2VydCBjb250cm9sKCdyZXN1bHQnLEZhbHNlLCd1cCcpLmdldCgndGV4dCcpPT1leHBlY3RlZAogICAgICAgIHNob3QoZm9sZGVyLCcwMi1yZWFsLWN1dC1wbGFuJykKICAgICAgICBjb250cm9sKCdzYXZlJyk7IGNvbnRyb2woJ3NoYXJlJykKICAgICAgICByZXNvbHZlcj1hZCgnc2hlbGwnLCdkdW1wc3lzJywnYWN0aXZpdHknLCdhY3Rpdml0aWVzJykuZGVjb2RlKCkKICAgICAgICBhc3NlcnQgJ0Nob29zZXJBY3Rpdml0eScgaW4gcmVzb2x2ZXIgb3IgJ1Jlc29sdmVyQWN0aXZpdHknIGluIHJlc29sdmVyLHJlc29sdmVyWy0yNTAwOl0KICAgICAgICBhZCgnc2hlbGwnLCdpbnB1dCcsJ2tleWV2ZW50JywnS0VZQ09ERV9CQUNLJykKICAgICAgICBjb250cm9sKCdiYWNrJyxkaXJlY3Rpb249J3VwJykKICAgICAgICBhZCgnc2hlbGwnLCdhbScsJ2ZvcmNlLXN0b3AnLGFwcCk7IGxhdW5jaCgpCiAgICAgICAgYXNzZXJ0IGNvbnRyb2woJ3Byb2plY3RfbmFtZScsRmFsc2UsJ3VwJykuZ2V0KCd0ZXh0Jyk9PW5hbWUKICAgICAgICBjb250cm9sKCdvcGVuJykKICAgICAgICBmaW5kKGxhbWJkYSBuOm4uZ2V0KCd0ZXh0Jyk9PW5hbWUsY2xpY2s9VHJ1ZSkKICAgICAgICBmaW5kKGxhbWJkYSBuOm4uZ2V0KCd0ZXh0Jyk9PSgn0JfQsNCz0YDRg9C30LjRgtGMINC/0YDQvtC10LrRgicgaWYgcnUgZWxzZSAnTG9hZCBwcm9qZWN0JyksY2xpY2s9VHJ1ZSkKICAgICAgICBhc3NlcnQgY29udHJvbCgncHJvamVjdF9uYW1lJyxGYWxzZSwndXAnKS5nZXQoJ3RleHQnKT09bmFtZQogICAgICAgIGNvbnRyb2woJ2hlbHAnKTsgc2hvdChmb2xkZXIsJzAzLWN1dC1jb252ZW50aW9uJykKICAgICAgICBmaW5kKGxhbWJkYSBuOm4uZ2V0KCdyZXNvdXJjZS1pZCcpPT0nYW5kcm9pZDppZC9idXR0b24xJyxjbGljaz1UcnVlKQogICAgICAgIGNvbnRyb2woJ21lbnUnLGRpcmVjdGlvbj0ndXAnKQogICAgICAgIGZpbmQobGFtYmRhIG46bi5nZXQoJ3RleHQnKT09KCfQoNC10LrQu9Cw0LzQsCDQuCDQtNCw0L3QvdGL0LUnIGlmIHJ1IGVsc2UgJ0FkdmVydGlzaW5nIGFuZCBwcml2YWN5JyksY2xpY2s9VHJ1ZSkKICAgICAgICAjIEluc3BlY3QgdGhlIHByaXZhY3kgZGlhbG9nLCB3aXRob3V0IHRvdWNoaW5nIG9yIGdlbmVyYXRpbmcgYWQgaW50ZXJhY3Rpb25zLgogICAgICAgIHByaXZhY3k9dHJlZSgpOyBhc3NlcnQgYW55KG4uZ2V0KCdyZXNvdXJjZS1pZCcpPT0nYW5kcm9pZDppZC9idXR0b24xJyBmb3IgbiBpbiBwcml2YWN5Lml0ZXIoJ25vZGUnKSkKICAgICAgICBhZCgnc2hlbGwnLCdpbnB1dCcsJ2tleWV2ZW50JywnS0VZQ09ERV9CQUNLJykKICAgICAgICBjb250cm9sKCdjYWxjdWxhdGUnKTsgd2FpdF9zdW1tYXJ5KCfQoNCw0LfQvNC10YnQtdC90L4gNyDQuNC3IDcg0LTQtdGC0LDQu9C10Lkg4oCiINC30LDQs9C+0YLQvtCy0L7QujogMicgaWYgcnUgZWxzZSAnNyBvZiA3IHBhcnRzIHBsYWNlZCDigKIgMiBzdG9jayBwaWVjZXMgdXNlZCcpCiAgICAgICAgY29udHJvbCgnc2hhcmUnKTsgYWQoJ3NoZWxsJywnaW5wdXQnLCdrZXlldmVudCcsJ0tFWUNPREVfQkFDSycpCiAgICAgICAgc2hvdChmb2xkZXIsJzA0LXBsYW4td2l0aC1zYXZlZC1wcm9qZWN0JykKICAgICAgICBhZCgnc2hlbGwnLCdzZXR0aW5ncycsJ3B1dCcsJ3N5c3RlbScsJ2ZvbnRfc2NhbGUnLCcyLjAnKQogICAgICAgIGFkKCdzaGVsbCcsJ2FtJywnZm9yY2Utc3RvcCcsYXBwKTsgbGF1bmNoKCk7IGNvbnRyb2woJ2hlbHAnKQogICAgICAgIHNob3QoZm9sZGVyLCcwNS1sYXJnZS1mb250LWhlbHAnKTsgYWQoJ3NoZWxsJywnaW5wdXQnLCdrZXlldmVudCcsJ0tFWUNPREVfQkFDSycpCiAgICAgICAgcmVwb3J0cy5hcHBlbmQoeydsYW5ndWFnZSc6bGFuZywnZmluaXRlRXhhbXBsZVBhcnRzJzo3LCd1c2VkU3RvY2snOjIsJ3BhcnRMZW5ndGhNbSc6NDUwMCwnc2F3TG9zc01tJzoyMSwncmVtYWluZGVyTW0nOjI3OSwncmVhbERyYWZ0UGVyc2lzdGVkQWZ0ZXJGb3JjZVN0b3AnOlRydWUsJ3NhdmVkUHJvamVjdE9wZW5lZCc6VHJ1ZSwnY3N2Q2hvb3Nlck9wZW5lZFdpdGhvdXRFeHRlcm5hbFNlbmQnOlRydWUsJ2hlbHBBbmRQcml2YWN5T3BlbmVkJzpUcnVlLCdsYXJnZUZvbnRIZWxwT3BlbmVkJzpUcnVlLCdhZENsaWNrcyc6MH0pCiAgICAob3V0LydyZWNlaXB0Lmpzb24nKS53cml0ZV90ZXh0KGpzb24uZHVtcHMoeydzb3VyY2VTaGEnOm9zLmVudmlyb25bJ1NPVVJDRV9TSEEnXSwnd29ya2Zsb3dTaGEnOm9zLmVudmlyb25bJ0dJVEhVQl9TSEEnXSwncnVuSWQnOm9zLmVudmlyb25bJ0dJVEhVQl9SVU5fSUQnXSwnc2RrJzphcGksJ3BhZ2VTaXplJzpwYWdlLCdwYWdlU2l6ZU1ldGhvZCc6cGFnZV9tZXRob2QsJ3NpZ25lZE1pbmlmaWVkUmVsZWFzZSc6VHJ1ZSwncmVwb3J0cyc6cmVwb3J0cywnYWRJbmNvbWVPckZpbGxWZXJpZmllZCc6RmFsc2V9LGluZGVudD0yKSkKICAgIHByaW50KCdBY3R1YWwgbWluaWZpZWQgcmVsZWFzZTogY2FsY3VsYXRlZCBmaW5pdGUgcGxhbiwgcmVzdG9yZSwgc2F2ZWQgcHJvamVjdCwgQ1NWIGNob29zZXIsIGxvY2FsZXMsIGZvbnQgYW5kIHBhZ2Ugc2l6ZSB2ZXJpZmllZCcpCmZpbmFsbHk6CiAgICBhZCgnc2hlbGwnLCdzZXR0aW5ncycsJ3B1dCcsJ3N5c3RlbScsJ2ZvbnRfc2NhbGUnLCcxLjAnLGNoZWNrPUZhbHNlKQogICAgKG91dC8nbG9nY2F0LnR4dCcpLndyaXRlX2J5dGVzKGFkKCdsb2djYXQnLCctZCcsJy10JywnMjAwMCcsY2hlY2s9RmFsc2UpKQogICAgKG91dC8nZmluYWwucG5nJykud3JpdGVfYnl0ZXMoYWQoJ2V4ZWMtb3V0Jywnc2NyZWVuY2FwJywnLXAnLGNoZWNrPUZhbHNlKSkK
+        run: printf '%s' "$SMOKE_BASE64" | base64 --decode > release-smoke.py
+      - uses: android-actions/setup-android@be39fa834029ff78f1a44aa3bb0819b8fc2bd8fd
+        with:
+          packages: 'platform-tools emulator'
+          log-accepted-android-sdk-licenses: 'false'
+      - name: Free disk and enable KVM
+        run: |
+          sudo rm -rf /usr/local/lib/android/sdk/ndk /opt/ghc /usr/share/dotnet
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d
+        with:
+          api-level: ${{ matrix.api }}
+          target: ${{ matrix.target }}
+          arch: x86_64
+          profile: pixel_2
+          disable-animations: true
+          emulator-boot-timeout: 600
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -camera-front none -memory 2048
+          script: python3 release-smoke.py
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: release-device-api-${{ matrix.api }}
+          path: release-device/
+          if-no-files-found: error
+          retention-days: 7
+  publish:
+    name: Publish verified downloadable release after actual device checks
+    needs: [signed, release-device]
+    uses: ./.github/workflows/publish-artifacts.yml
+    permissions:
+      contents: write
+      actions: read
+    with:
+      checked_run_id: ${{ github.run_id }}
