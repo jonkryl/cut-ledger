@@ -1,0 +1,84 @@
+name: Publish already verified artifacts
+on:
+  workflow_call:
+    inputs:
+      checked_run_id:
+        type: string
+        required: true
+  workflow_dispatch:
+    inputs:
+      checked_run_id:
+        description: Run with successful signing and both actual release device jobs
+        required: true
+        default: ''
+permissions:
+  contents: read
+  actions: read
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      actions: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+      - name: Require all actual quality jobs from this repository
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CHECKED_RUN: ${{ inputs.checked_run_id }}
+        run: |
+          [[ "$CHECKED_RUN" =~ ^[0-9]+$ ]]
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$CHECKED_RUN/jobs?per_page=100" > checked-jobs.json
+          python3 - <<'PY'
+          import json
+          jobs=json.load(open('checked-jobs.json'))['jobs']
+          for name in ['Verify prior quality proof and sign APK/AAB','Actual signed release API 24 (google_apis)','Actual signed release API 36 (google_apis_ps16k)']:
+              found=[j for j in jobs if j['name']==name]
+              assert len(found)==1 and found[0]['conclusion']=='success',name
+          PY
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: signed-release
+          path: signed-files
+          github-token: ${{ github.token }}
+          run-id: ${{ inputs.checked_run_id }}
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          pattern: release-device-api-*
+          path: device-files
+          github-token: ${{ github.token }}
+          run-id: ${{ inputs.checked_run_id }}
+      - name: Verify exact files, device receipts and unchanged app source
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import json,hashlib,subprocess,os
+          folder=Path('signed-files/release-output');proof=json.loads((folder/'release-verification.json').read_text())
+          assert proof['repository']==os.environ['GITHUB_REPOSITORY']
+          assert proof['package']=='com.jonkryl.cutledger' and proof['bannerId']=='R-M-20171771-1'
+          assert proof['certificateSha256']=='5f10d6584f0ee762cffd0f500a0dde0111932a4dd42c20ae9d1365a21e8c1be9'
+          assert not proof['releaseDemoBannerPresent'] and all(proof['checks'].values())
+          for a in proof['artifacts']:
+              p=folder/a['filename'];assert p.parent==folder
+              assert p.stat().st_size==a['bytes'] and hashlib.sha256(p.read_bytes()).hexdigest()==a['sha256']
+          for api,page in [(24,4096),(36,16384)]:
+              p=Path(f'device-files/release-device-api-{api}/receipt.json');r=json.loads(p.read_text())
+              assert r['sourceSha']==proof['sourceSha'] and r['sdk']==api and r['pageSize']==page and r['signedMinifiedRelease']
+              assert r['reports'] and all(x['realDraftPersistedAfterForceStop'] and x['savedProjectOpened'] and x['csvChooserOpenedWithoutExternalSend'] and x['helpAndPrivacyOpened'] and x['largeFontHelpOpened'] for x in r['reports'])
+          subprocess.run(['git','diff','--exit-code',proof['sourceSha'],'HEAD','--','app','gradle','gradlew','gradlew.bat','build.gradle.kts','settings.gradle.kts','gradle.properties'],check=True)
+          Path('release-notes.md').write_text('Original Cut Ledger signed APK/AAB. Exact artifact source: '+proof['sourceSha']+'\n\nActual Android 7 and Android 16 with 16 KB pages checks passed. Google Play availability and RSYA paid activation are separate external states.\n')
+          with open(os.environ['GITHUB_ENV'],'a') as f:
+              f.write('RELEASE_TAG=v'+proof['versionName']+'-'+str(proof['versionCode'])+'\n')
+          PY
+      - name: Publish exact verified artifacts from the current unchanged app checkout
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$RELEASE_TAG" signed-files/release-output/* --repo "$GITHUB_REPOSITORY" --clobber
+          else
+            gh release create "$RELEASE_TAG" signed-files/release-output/* --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "Cut Ledger $RELEASE_TAG" --notes-file release-notes.md
+          fi
