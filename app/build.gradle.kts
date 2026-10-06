@@ -31,9 +31,11 @@ android {
     }
     buildTypes {
         debug {
+            buildConfigField("String", "APPMETRICA_API_KEY", "\"\"")
             buildConfigField("String", "YANDEX_BANNER_ID", "\"demo-banner-yandex\"")
         }
         release {
+            buildConfigField("String", "APPMETRICA_API_KEY", "\"9192f476-143b-409d-ba53-d34af442dd32\"")
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
@@ -66,6 +68,7 @@ tasks.configureEach {
 }
 
 dependencies {
+    implementation("io.appmetrica.analytics:analytics:8.5.1")
     implementation("androidx.core:core:1.17.0")
     implementation("com.yandex.android:mobileads:8.5.0")
     testImplementation("junit:junit:4.13.2")
